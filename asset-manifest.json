@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/Algs/static/css/main.598e7c72.css",
+    "main.js": "/Algs/static/js/main.a9902ac2.js",
+    "static/js/453.3cd45580.chunk.js": "/Algs/static/js/453.3cd45580.chunk.js",
+    "index.html": "/Algs/index.html",
+    "main.598e7c72.css.map": "/Algs/static/css/main.598e7c72.css.map",
+    "main.a9902ac2.js.map": "/Algs/static/js/main.a9902ac2.js.map",
+    "453.3cd45580.chunk.js.map": "/Algs/static/js/453.3cd45580.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.598e7c72.css",
+    "static/js/main.a9902ac2.js"
+  ]
+}
