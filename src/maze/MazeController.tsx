@@ -98,7 +98,7 @@ export function MazeController(): React.ReactElement {
             setTimer(performanceEnd - performanceStart);
 
             if (path) {
-                path.map(([row, col], index) => {
+                path.forEach(([row, col], index) => {
                     setMoveCount(prevCount => prevCount + 1);
 
                     setTimeout(() => {
