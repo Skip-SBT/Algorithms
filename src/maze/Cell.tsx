@@ -1,5 +1,9 @@
 import * as React from 'react';
 import './Maze.css';
-export function Cell(): React.ReactElement {
-    return <div className='cell'></div>;
+type CellProps = {
+    className?: string;
+};
+
+export function Cell({ className = '' }: CellProps): React.ReactElement {
+    return <div className={`cell ${className}`.trim()}></div>;
 }

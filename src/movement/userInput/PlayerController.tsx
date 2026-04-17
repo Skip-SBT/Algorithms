@@ -37,7 +37,7 @@ export class PlayerController {
             break;
         }
 
-        if (this.map[newRow][newCol] !== 'W') {
+        if (this.getCell(newRow, newCol) !== 'W') {
             this.position = { row: newRow, col: newCol };
         }
 
@@ -49,6 +49,10 @@ export class PlayerController {
     }
 
     public hasWon(): boolean {
-        return this.map[this.position.row][this.position.col] === 'F';
+        return this.getCell(this.position.row, this.position.col) === 'F';
+    }
+
+    private getCell(row: number, col: number): string {
+        return this.map[row][col].toUpperCase();
     }
 }

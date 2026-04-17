@@ -1,5 +1,9 @@
 import * as React from 'react';
 import './Maze.css';
-export function Player(): React.ReactElement {
-    return <div className='player'></div>;
+type PlayerProps = {
+    className?: string;
+};
+
+export function Player({ className = '' }: PlayerProps): React.ReactElement {
+    return <div className={`player ${className}`.trim()}></div>;
 }
