@@ -2,12 +2,14 @@
     background-color: #11d537;
     width: 25px;
     height: 25px;
+    box-sizing: border-box;
 }
 
 .cell {
     background-color: #5b5a5a;
     width: 25px;
     height: 25px;
+    box-sizing: border-box;
 }
 
 .start {
@@ -16,14 +18,17 @@
     height: 25px;
     font-size: 5px;
     font-weight: bold;
-    align-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 .player {
     background-color: #d00000;
     width: 25px;
     height: 25px;
-
+    box-sizing: border-box;
 }
 
 .finish {
@@ -33,69 +38,88 @@
     linear-gradient(45deg, black 25%, white 25%, white 75%, black 75%, black);
     background-size: 10px 10px;
     background-position: 0 0, 5px 5px;
+    box-sizing: border-box;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 1200px);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.timer,
+.moveCount,
+.mazeSelector,
+.modeButton,
+.startButton,
+.resetButton-fixed,
+.resetButton {
+    border-radius: 8px;
+    border: 2px solid #000;
+    font-weight: bold;
+}
+
+.timer {
+    font-size: 20px;
+    padding: 5px 12px;
+    background-color: #fff;
+    text-align: center;
+    width: 180px;
+    color: black;
+}
+
+.moveCount {
+    font-size: 20px;
+    padding: 5px 12px;
+    background-color: #fff;
+    text-align: center;
+    width: 180px;
+    color: black;
+}
+
+.mazeSelector,
+.modeButton,
+.startButton {
+    background-color: #fff;
+    color: #000;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 16px;
+}
+
+.mazeSelector {
+    min-width: 120px;
 }
 
 .resetButton-fixed {
-    background-color: #FF6961;
-    width: 100px;
+    background-color: #ff6961;
+    width: auto;
     height: 40px;
-    font-size: 20px;
-    font-weight: bold;
-    align-content: center;
-    position: fixed;
-    top: 50px;
-    right: -30px;
-    padding: 5px;
-    border-radius: 5px;
-    border: 2px solid #000;
-    transform: translate(-50%, -50%);
+    font-size: 16px;
+    padding: 0 16px;
 }
 
 .resetButton {
-    background-color: #FF6961;
-    width: 100px;
+    background-color: #ff6961;
+    width: auto;
     height: 50px;
     font-size: 20px;
-    font-weight: bold;
-    align-content: center;
+    padding: 0 16px;
     margin-bottom: 20px;
-}
-
-.timer{
-    font-size: 20px;
-    font-weight: bold;
-    padding: 5px;
-    background-color: #fff;
-    border: 2px solid #000;
-    border-radius: 5px;
-    text-align: center;
-    position: fixed;
-    top: 50px;
-    right: 20px;
-    transform: translate(-50%, -50%);
-    width: 200px;
-    color: black;
-}
-
-.moveCount{
-    font-size: 20px;
-    font-weight: bold;
-    padding: 5px;
-    background-color: #fff;
-    border: 2px solid #000;
-    border-radius: 5px;
-    text-align: center;
-    position: fixed;
-    top: 100px;
-    right: 20px;
-    transform: translate(-50%, -50%);
-    color: black;
-    width: 200px;
-
 }
 
 .mazeContainer {
     display: flex;
+    justify-content: center;
+    overflow: auto;
+    width: 100%;
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 .maze {
