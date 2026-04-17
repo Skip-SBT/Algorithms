@@ -5,9 +5,10 @@ import { Cell } from './Cell';
 import { Finish } from './Finish';
 import { Start } from './Start';
 import { Player } from './Player';
+import { DijkstraInfoPanel } from './DijkstraInfoPanel';
 import { PlayerController } from 'movement/userInput/PlayerController';
 import './Maze.css';
-import { DijkstraMovementController } from '../movement/programmatically/Dijkstra/DijkstraMovementController';
+import { DijkstraMovementController, DijkstraResult } from '../movement/programmatically/Dijkstra/DijkstraMovementController';
 import '../types';
 import mazeList from './maps/mazeList.json';
 
@@ -15,6 +16,12 @@ type Position = {
     row: number;
     col: number;
 };
+
+type DijkstraPhase = 'idle' | 'search' | 'path' | 'done';
+
+const DEFAULT_DELAY_MS = 40;
+const MAX_DELAY_MS = 180;
+const positionToKey = ({ row, col }: Position): string => `${row}-${col}`;
 
 type MazeOption = {
     label: string;
@@ -49,11 +56,52 @@ export function MazeController(): React.ReactElement {
     const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
     const [moveCount, setMoveCount] = useState<number>(0);
     const [start, setStart] = useState<boolean>(false);
+    const [isPaused, setIsPaused] = useState<boolean>(false);
+    const [animationDelayMs, setAnimationDelayMs] = useState<number>(DEFAULT_DELAY_MS);
+
+    const [exploredCells, setExploredCells] = useState<Position[]>([]);
+    const [frontierCells, setFrontierCells] = useState<Position[]>([]);
+    const [pathCells, setPathCells] = useState<Position[]>([]);
+    const [shortestFrontierCell, setShortestFrontierCell] = useState<Position | null>(null);
+
+    const [currentDijkstraCell, setCurrentDijkstraCell] = useState<Position | null>(null);
+    const [currentDijkstraDistance, setCurrentDijkstraDistance] = useState<number | null>(null);
+    const [shortestFrontierDistance, setShortestFrontierDistance] = useState<number | null>(null);
+    const [dijkstraStepIndex, setDijkstraStepIndex] = useState<number>(0);
+    const [dijkstraTotalSteps, setDijkstraTotalSteps] = useState<number>(0);
+
+    const [dijkstraResult, setDijkstraResult] = useState<DijkstraResult | null>(null);
+    const [dijkstraPhase, setDijkstraPhase] = useState<DijkstraPhase>('idle');
+    const [searchIndex, setSearchIndex] = useState<number>(0);
+    const [pathIndex, setPathIndex] = useState<number>(0);
+
     const animationTimeouts = useRef<number[]>([]);
+    const exploredCellKeys = useMemo(() => new Set(exploredCells.map(positionToKey)), [exploredCells]);
+    const frontierCellKeys = useMemo(() => new Set(frontierCells.map(positionToKey)), [frontierCells]);
+    const shortestFrontierKey = useMemo(() => (shortestFrontierCell ? positionToKey(shortestFrontierCell) : null), [shortestFrontierCell]);
+    const pathCellKeys = useMemo(() => new Set(pathCells.map(positionToKey)), [pathCells]);
 
     const clearAnimationTimeouts = () => {
         animationTimeouts.current.forEach(timeout => window.clearTimeout(timeout));
         animationTimeouts.current = [];
+    };
+
+    const resetDijkstraPlaybackState = () => {
+        setDijkstraResult(null);
+        setDijkstraPhase('idle');
+        setSearchIndex(0);
+        setPathIndex(0);
+        setIsPaused(false);
+        setAnimationDelayMs(DEFAULT_DELAY_MS);
+        setExploredCells([]);
+        setFrontierCells([]);
+        setPathCells([]);
+        setShortestFrontierCell(null);
+        setCurrentDijkstraCell(null);
+        setCurrentDijkstraDistance(null);
+        setShortestFrontierDistance(null);
+        setDijkstraStepIndex(0);
+        setDijkstraTotalSteps(0);
     };
 
     useEffect(() => {
@@ -78,75 +126,167 @@ export function MazeController(): React.ReactElement {
         setTimer(0);
         setIsTimerRunning(false);
         setStart(false);
+        resetDijkstraPlaybackState();
     }, [initialPosition, playerController]);
 
     useEffect(() => {
-        if (!start) {
+        if (isUserInputMode) {
             return;
         }
 
-        let handleKeyDown: ((event: KeyboardEvent) => void) | undefined;
+        const shouldRunTimer = start && !isPaused && (dijkstraPhase === 'search' || dijkstraPhase === 'path');
+        setIsTimerRunning(shouldRunTimer);
+    }, [dijkstraPhase, isPaused, isUserInputMode, start]);
 
-        if (isUserInputMode) {
-            handleKeyDown = (event: KeyboardEvent) => {
-                if (!event.key.startsWith('Arrow')) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                if (!isTimerRunning) {
-                    setIsTimerRunning(true);
-                }
-
-                const previousPosition = playerController.getPosition();
-                const newPosition = playerController.handleKeyDown(event);
-                const hasMoved = previousPosition.row !== newPosition.row || previousPosition.col !== newPosition.col;
-
-                setPlayerPosition(newPosition);
-
-                if (hasMoved) {
-                    setMoveCount(prevCount => prevCount + 1);
-                }
-
-                if (playerController.hasWon()) {
-                    setHasWon(true);
-                    setIsTimerRunning(false);
-                }
-            };
-
-            window.addEventListener('keydown', handleKeyDown);
-        } else {
-            clearAnimationTimeouts();
-            const performanceStart = window.performance.now();
-            const path = dijkstraController.dijkstra();
-            const performanceEnd = window.performance.now();
-            setTimer((performanceEnd - performanceStart) / 1000);
-
-            if (path) {
-                setMoveCount(Math.max(0, path.length - 1));
-
-                path.forEach(([row, col], index) => {
-                    const timeout = window.setTimeout(() => {
-                        setPlayerPosition({ row, col });
-
-                        if (index === path.length - 1) {
-                            setHasWon(true);
-                        }
-                    }, index * 50);
-
-                    animationTimeouts.current.push(timeout);
-                });
-            }
+    useEffect(() => {
+        if (!start || !isUserInputMode) {
+            return;
         }
 
-        return () => {
-            if (handleKeyDown) {
-                window.removeEventListener('keydown', handleKeyDown);
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (!event.key.startsWith('Arrow')) {
+                return;
             }
-            clearAnimationTimeouts();
+
+            event.preventDefault();
+
+            if (!isTimerRunning) {
+                setIsTimerRunning(true);
+            }
+
+            const previousPosition = playerController.getPosition();
+            const newPosition = playerController.handleKeyDown(event);
+            const hasMoved = previousPosition.row !== newPosition.row || previousPosition.col !== newPosition.col;
+
+            setPlayerPosition(newPosition);
+
+            if (hasMoved) {
+                setMoveCount(prevCount => prevCount + 1);
+            }
+
+            if (playerController.hasWon()) {
+                setHasWon(true);
+                setIsTimerRunning(false);
+            }
         };
-    }, [dijkstraController, isTimerRunning, isUserInputMode, playerController, start]);
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isTimerRunning, isUserInputMode, playerController, start]);
+
+    useEffect(() => {
+        if (!start || isUserInputMode) {
+            return;
+        }
+
+        clearAnimationTimeouts();
+        setHasWon(false);
+        setMoveCount(0);
+        setTimer(0);
+        setIsPaused(false);
+
+        const nextResult = dijkstraController.dijkstra();
+        setDijkstraResult(nextResult);
+        setDijkstraTotalSteps(nextResult.steps.length);
+        setDijkstraPhase('search');
+        setSearchIndex(0);
+        setPathIndex(0);
+        setExploredCells([]);
+        setFrontierCells([]);
+        setPathCells([]);
+        setShortestFrontierCell(null);
+        setCurrentDijkstraCell(null);
+        setCurrentDijkstraDistance(null);
+        setShortestFrontierDistance(null);
+        setDijkstraStepIndex(0);
+    }, [dijkstraController, isUserInputMode, start]);
+
+    useEffect(() => {
+        if (!start || isUserInputMode || isPaused || !dijkstraResult) {
+            return;
+        }
+
+        if (dijkstraPhase === 'search') {
+            if (searchIndex >= dijkstraResult.steps.length) {
+                if (!dijkstraResult.path) {
+                    setDijkstraPhase('done');
+                    setStart(false);
+                    setIsTimerRunning(false);
+                    setShortestFrontierCell(null);
+                    setShortestFrontierDistance(null);
+                } else {
+                    setDijkstraPhase('path');
+                    setPathIndex(0);
+                    setFrontierCells([]);
+                    setShortestFrontierCell(null);
+                    setShortestFrontierDistance(null);
+                }
+                return;
+            }
+
+            const timeout = window.setTimeout(() => {
+                const step = dijkstraResult.steps[searchIndex];
+                const [row, col] = step.current;
+                const currentPosition = { row, col };
+                const nextShortestFrontier = step.shortestFrontier
+                    ? { row: step.shortestFrontier[0], col: step.shortestFrontier[1] }
+                    : null;
+
+                setPlayerPosition(currentPosition);
+                setCurrentDijkstraCell(currentPosition);
+                setCurrentDijkstraDistance(step.distance);
+                setShortestFrontierCell(nextShortestFrontier);
+                setShortestFrontierDistance(step.shortestFrontierDistance);
+                setDijkstraStepIndex(searchIndex + 1);
+                setExploredCells(
+                    dijkstraResult.visitedOrder
+                        .slice(0, searchIndex + 1)
+                        .map(([visitedRow, visitedCol]) => ({ row: visitedRow, col: visitedCol }))
+                );
+                setFrontierCells(step.frontier.map(([frontierRow, frontierCol]) => ({ row: frontierRow, col: frontierCol })));
+                setSearchIndex(prevSearchIndex => prevSearchIndex + 1);
+            }, animationDelayMs);
+
+            animationTimeouts.current.push(timeout);
+            return () => {
+                window.clearTimeout(timeout);
+            };
+        }
+
+        if (dijkstraPhase === 'path') {
+            const path = dijkstraResult.path ?? [];
+
+            if (pathIndex >= path.length) {
+                setHasWon(path.length > 0);
+                setDijkstraPhase('done');
+                setStart(false);
+                setCurrentDijkstraDistance(null);
+                setShortestFrontierDistance(null);
+                return;
+            }
+
+            const timeout = window.setTimeout(() => {
+                const [row, col] = path[pathIndex];
+                const position = { row, col };
+
+                setPlayerPosition(position);
+                setCurrentDijkstraCell(position);
+                setPathCells(prevCells => (
+                    prevCells.some(cell => cell.row === row && cell.col === col) ? prevCells : [...prevCells, position]
+                ));
+                setMoveCount(Math.max(0, pathIndex));
+                setPathIndex(prevPathIndex => prevPathIndex + 1);
+            }, animationDelayMs + 15);
+
+            animationTimeouts.current.push(timeout);
+            return () => {
+                window.clearTimeout(timeout);
+            };
+        }
+    }, [animationDelayMs, dijkstraPhase, dijkstraResult, isPaused, isUserInputMode, pathIndex, searchIndex, start]);
 
     const resetGameHandler = () => {
         clearAnimationTimeouts();
@@ -154,6 +294,35 @@ export function MazeController(): React.ReactElement {
         setTimer(0);
         setIsTimerRunning(false);
         setStart(false);
+        resetDijkstraPlaybackState();
+    };
+
+    const toggleStart = () => {
+        if (start) {
+            clearAnimationTimeouts();
+            setIsTimerRunning(false);
+            setStart(false);
+            setIsPaused(false);
+            return;
+        }
+
+        if (!isUserInputMode) {
+            resetDijkstraPlaybackState();
+        }
+
+        setStart(true);
+    };
+
+    const togglePause = () => {
+        if (!start || isUserInputMode) {
+            return;
+        }
+
+        setIsPaused(prevPaused => !prevPaused);
+    };
+
+    const slowDownDijkstra = () => {
+        setAnimationDelayMs(prevDelay => Math.min(MAX_DELAY_MS, prevDelay + 20));
     };
 
     function switchMode(): void {
@@ -186,15 +355,47 @@ export function MazeController(): React.ReactElement {
                 {!hasWon && (
                     <button className='resetButton-fixed' onClick={resetGameHandler}>Reset</button>
                 )}
+                <div className='modeLabel'>Mode: {isUserInputMode ? 'User Input' : 'Dijkstra Visualizer'}</div>
                 <button className='modeButton' onClick={switchMode}>
-                    {!isUserInputMode ? 'Dijkstra Mode' : 'User Input Mode'}
+                    {isUserInputMode ? 'Switch to Dijkstra' : 'Switch to User Input'}
                 </button>
-                <button className='startButton' onClick={() => setStart(prevStart => !prevStart)}>
+                <button className='startButton' onClick={toggleStart}>
                     {start ? 'Stop' : 'Start'}
                 </button>
+                {!isUserInputMode && (
+                    <>
+                        <button className='pauseButton' onClick={togglePause} disabled={!start}>
+                            {isPaused ? 'Resume' : 'Pause'}
+                        </button>
+                        <button className='slowDownButton' onClick={slowDownDijkstra}>
+                            Slow Down
+                        </button>
+                        <div className='speedLabel'>Delay: {animationDelayMs}ms</div>
+                    </>
+                )}
             </div>
-            <div className='mazeContainer'>
-                {renderMaze(map, playerPosition)}
+            <div className='algorithmLayout'>
+                <div className='mazeContainer'>
+                    {renderMaze(map, playerPosition, exploredCellKeys, frontierCellKeys, shortestFrontierKey, pathCellKeys)}
+                </div>
+                {!isUserInputMode && (
+                    <DijkstraInfoPanel
+                        isRunning={isTimerRunning && start}
+                        isPaused={isPaused}
+                        hasStarted={dijkstraStepIndex > 0}
+                        hasWon={hasWon}
+                        stepIndex={dijkstraStepIndex}
+                        totalSteps={dijkstraTotalSteps}
+                        exploredCount={exploredCells.length}
+                        frontierCount={frontierCells.length}
+                        pathLength={pathCells.length > 0 ? pathCells.length - 1 : 0}
+                        currentCell={currentDijkstraCell}
+                        currentDistance={currentDijkstraDistance}
+                        shortestFrontierCell={shortestFrontierCell}
+                        shortestFrontierDistance={shortestFrontierDistance}
+                        playbackDelayMs={animationDelayMs}
+                    />
+                )}
             </div>
             {hasWon && (
                 <div className='winMessage'>
@@ -213,23 +414,42 @@ export function MazeController(): React.ReactElement {
     );
 }
 
-function renderMaze(map: string[][], playerPosition: Position): React.ReactElement {
+function renderMaze(
+    map: string[][],
+    playerPosition: Position,
+    exploredCellKeys: Set<string>,
+    frontierCellKeys: Set<string>,
+    shortestFrontierKey: string | null,
+    pathCellKeys: Set<string>
+): React.ReactElement {
     const maze = map.map((row, rowIndex) => (
         <div key={rowIndex} style={{ display: 'flex' }}>
             {row.map((cell, cellIndex) => {
+                const cellKey = `${rowIndex}-${cellIndex}`;
+
                 if (playerPosition.row === rowIndex && playerPosition.col === cellIndex) {
                     return <Player key={`${rowIndex}-${cellIndex}`} />;
                 }
+
+                const cellStateClassName = pathCellKeys.has(cellKey)
+                    ? 'path'
+                    : shortestFrontierKey === cellKey
+                        ? 'shortestFrontier'
+                        : frontierCellKeys.has(cellKey)
+                            ? 'frontier'
+                            : exploredCellKeys.has(cellKey)
+                                ? 'explored'
+                                : '';
 
                 switch (cell.toUpperCase()) {
                 case 'W':
                     return <Wall key={`${rowIndex}-${cellIndex}`} />;
                 case 'S':
-                    return <Start key={`${rowIndex}-${cellIndex}`} />;
+                    return <Start key={`${rowIndex}-${cellIndex}`} className={cellStateClassName} />;
                 case 'F':
-                    return <Finish key={`${rowIndex}-${cellIndex}`} />;
+                    return <Finish key={`${rowIndex}-${cellIndex}`} className={cellStateClassName} />;
                 default:
-                    return <Cell key={`${rowIndex}-${cellIndex}`} />;
+                    return <Cell key={`${rowIndex}-${cellIndex}`} className={cellStateClassName} />;
                 }
             })}
         </div>
@@ -238,7 +458,13 @@ function renderMaze(map: string[][], playerPosition: Position): React.ReactEleme
     return <div className='maze'>{maze}</div>;
 }
 
-function resetGame(setPlayerPosition: (arg0: Position) => void, initialPosition: Position, playerController: PlayerController, setHasWon: (state: boolean) => void, setMoveCount: (state: number) => void): void {
+function resetGame(
+    setPlayerPosition: (arg0: Position) => void,
+    initialPosition: Position,
+    playerController: PlayerController,
+    setHasWon: (state: boolean) => void,
+    setMoveCount: (state: number) => void
+): void {
     setPlayerPosition(initialPosition);
     playerController.resetGame(initialPosition);
     setHasWon(false);
