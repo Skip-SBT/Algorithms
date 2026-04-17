@@ -45,8 +45,11 @@ export function DijkstraInfoPanel({
 
     return (
         <aside className='dijkstraPanel'>
-            <h3>Dijkstra Visualizer</h3>
-            <div className='dijkstraStatus'>Status: {statusText}</div>
+            <div className='dijkstraPanelHeader'>
+                <h3>Dijkstra Visualizer</h3>
+                <div className='dijkstraStatus'>Status: {statusText}</div>
+            </div>
+
             <div className='dijkstraMetrics'>
                 <div>Step: {stepIndex}/{totalSteps}</div>
                 <div>Explored: {exploredCount}</div>
@@ -60,6 +63,7 @@ export function DijkstraInfoPanel({
             </div>
 
             <div className='dijkstraLegend'>
+                <h4>Legend</h4>
                 <div><span className='legendSwatch legendExplored'></span>Explored (shortest distance fixed)</div>
                 <div><span className='legendSwatch legendFrontier'></span>Frontier (discovered, waiting in queue)</div>
                 <div><span className='legendSwatch legendShortestFrontier'></span>Shortest frontier (next candidate)</div>

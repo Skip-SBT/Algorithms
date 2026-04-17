@@ -344,35 +344,43 @@ export function MazeController(): React.ReactElement {
 
     return (
         <>
-            <div className='toolbar'>
-                <div className='timer'>{timer.toFixed(2)} Seconds</div>
-                <div className='moveCount'>{moveCount} Moves</div>
-                <select className='mazeSelector' onChange={handleMazeChange} value={selectedMazeLabel}>
-                    {mazeOptions.map(option => (
-                        <option key={option.label} value={option.label}>{option.label}</option>
-                    ))}
-                </select>
-                {!hasWon && (
-                    <button className='resetButton-fixed' onClick={resetGameHandler}>Reset</button>
-                )}
-                <div className='modeLabel'>Mode: {isUserInputMode ? 'User Input' : 'Dijkstra Visualizer'}</div>
-                <button className='modeButton' onClick={switchMode}>
-                    {isUserInputMode ? 'Switch to Dijkstra' : 'Switch to User Input'}
-                </button>
-                <button className='startButton' onClick={toggleStart}>
-                    {start ? 'Stop' : 'Start'}
-                </button>
-                {!isUserInputMode && (
-                    <>
-                        <button className='pauseButton' onClick={togglePause} disabled={!start}>
-                            {isPaused ? 'Resume' : 'Pause'}
-                        </button>
-                        <button className='slowDownButton' onClick={slowDownDijkstra}>
-                            Slow Down
-                        </button>
-                        <div className='speedLabel'>Delay: {animationDelayMs}ms</div>
-                    </>
-                )}
+            <div className='toolbar toolbarCard'>
+                <div className='toolbarGroup statsGroup'>
+                    <div className='timer'>{timer.toFixed(2)} Seconds</div>
+                    <div className='moveCount'>{moveCount} Moves</div>
+                </div>
+
+                <div className='toolbarGroup controlsGroup'>
+                    <select className='mazeSelector' onChange={handleMazeChange} value={selectedMazeLabel}>
+                        {mazeOptions.map(option => (
+                            <option key={option.label} value={option.label}>{option.label}</option>
+                        ))}
+                    </select>
+                    {!hasWon && (
+                        <button className='resetButton-fixed' onClick={resetGameHandler}>Reset</button>
+                    )}
+                    <button className='modeButton' onClick={switchMode}>
+                        {isUserInputMode ? 'Switch to Dijkstra' : 'Switch to User Input'}
+                    </button>
+                    <button className='startButton' onClick={toggleStart}>
+                        {start ? 'Stop' : 'Start'}
+                    </button>
+                    {!isUserInputMode && (
+                        <>
+                            <button className='pauseButton' onClick={togglePause} disabled={!start}>
+                                {isPaused ? 'Resume' : 'Pause'}
+                            </button>
+                            <button className='slowDownButton' onClick={slowDownDijkstra}>
+                                Slow Down
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                <div className='toolbarGroup modeGroup'>
+                    <div className='modeLabel'>Mode: {isUserInputMode ? 'User Input' : 'Dijkstra Visualizer'}</div>
+                    {!isUserInputMode && <div className='speedLabel'>Delay: {animationDelayMs}ms</div>}
+                </div>
             </div>
             <div className='algorithmLayout'>
                 <div className='mazeContainer'>
@@ -423,7 +431,7 @@ function renderMaze(
     pathCellKeys: Set<string>
 ): React.ReactElement {
     const maze = map.map((row, rowIndex) => (
-        <div key={rowIndex} style={{ display: 'flex' }}>
+        <div key={rowIndex} className='mazeRow'>
             {row.map((cell, cellIndex) => {
                 const cellKey = `${rowIndex}-${cellIndex}`;
 

@@ -1,15 +1,38 @@
+.toolbar,
+.mazeContainer,
+.dijkstraPanel,
+.winMessage,
+.timer,
+.moveCount,
+.mazeSelector,
+.modeLabel,
+.modeButton,
+.startButton,
+.resetButton-fixed,
+.resetButton,
+.pauseButton,
+.slowDownButton,
+.speedLabel {
+    font-family: Inter, Segoe UI, Arial, sans-serif;
+}
+
+.mazeContainer {
+    --cell-size: 25px;
+}
+
 .wall {
     background-color: #11d537;
-    width: 25px;
-    height: 25px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     box-sizing: border-box;
 }
 
 .cell {
     background-color: #5b5a5a;
-    width: 25px;
-    height: 25px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     box-sizing: border-box;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 .cell.explored,
@@ -46,9 +69,9 @@
 
 .start {
     background-color: #5b5a5a;
-    width: 25px;
-    height: 25px;
-    font-size: 5px;
+    width: var(--cell-size);
+    height: var(--cell-size);
+    font-size: clamp(4px, calc(var(--cell-size) * 0.24), 7px);
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -58,8 +81,8 @@
 
 .player {
     background-color: #d00000;
-    width: 25px;
-    height: 25px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     box-sizing: border-box;
 }
 
@@ -69,24 +92,50 @@
 }
 
 .finish {
-    width: 25px;
-    height: 25px;
+    width: var(--cell-size);
+    height: var(--cell-size);
     background-image: linear-gradient(45deg, black 25%, transparent 25%, transparent 75%, black 75%, black),
     linear-gradient(45deg, black 25%, white 25%, white 75%, black 75%, black);
-    background-size: 10px 10px;
-    background-position: 0 0, 5px 5px;
+    background-size: calc(var(--cell-size) * 0.4) calc(var(--cell-size) * 0.4);
+    background-position: 0 0, calc(var(--cell-size) * 0.2) calc(var(--cell-size) * 0.2);
     box-sizing: border-box;
 }
 
 .toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     justify-content: center;
     width: min(100%, 1200px);
-    padding: 16px;
+    padding: 14px;
     box-sizing: border-box;
+}
+
+.toolbarCard {
+    border: 1px solid #1f2937;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.7) 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.toolbarGroup {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.statsGroup {
+    justify-content: center;
+}
+
+.controlsGroup {
+    justify-content: center;
+}
+
+.modeGroup {
+    justify-content: center;
 }
 
 .timer,
@@ -103,29 +152,29 @@
 }
 
 .timer {
-    font-size: 20px;
-    padding: 5px 12px;
-    background-color: #fff;
+    font-size: 19px;
+    padding: 6px 12px;
+    background-color: #f8fafc;
     text-align: center;
-    width: 180px;
-    color: black;
+    width: 170px;
+    color: #0f172a;
 }
 
 .moveCount {
-    font-size: 20px;
-    padding: 5px 12px;
-    background-color: #fff;
+    font-size: 19px;
+    padding: 6px 12px;
+    background-color: #f8fafc;
     text-align: center;
-    width: 180px;
-    color: black;
+    width: 170px;
+    color: #0f172a;
 }
 
 .mazeSelector,
 .modeLabel,
 .modeButton,
 .startButton {
-    background-color: #fff;
-    color: #000;
+    background-color: #f8fafc;
+    color: #0f172a;
     height: 40px;
     padding: 0 14px;
     font-size: 16px;
@@ -134,8 +183,8 @@
 .pauseButton,
 .slowDownButton,
 .speedLabel {
-    background-color: #fff;
-    color: #000;
+    background-color: #f8fafc;
+    color: #0f172a;
     height: 40px;
     padding: 0 14px;
     font-size: 16px;
@@ -145,7 +194,8 @@
 }
 
 .pauseButton:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .speedLabel {
@@ -156,10 +206,55 @@
 .modeLabel {
     display: flex;
     align-items: center;
+    background-color: #dbeafe;
 }
 
 .mazeSelector {
     min-width: 120px;
+}
+
+.modeButton,
+.startButton,
+.pauseButton,
+.slowDownButton,
+.resetButton-fixed,
+.resetButton {
+    cursor: pointer;
+    transition: transform 100ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.modeButton:hover,
+.startButton:hover,
+.pauseButton:hover,
+.slowDownButton:hover,
+.resetButton-fixed:hover,
+.resetButton:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.modeButton:focus-visible,
+.startButton:focus-visible,
+.pauseButton:focus-visible,
+.slowDownButton:focus-visible,
+.resetButton-fixed:focus-visible,
+.resetButton:focus-visible,
+.mazeSelector:focus-visible {
+    outline: 3px solid #38bdf8;
+    outline-offset: 2px;
+}
+
+.startButton {
+    background-color: #16a34a;
+    color: #f8fafc;
+}
+
+.pauseButton {
+    background-color: #f59e0b;
+}
+
+.slowDownButton {
+    background-color: #60a5fa;
 }
 
 .resetButton-fixed {
@@ -183,9 +278,13 @@
     display: flex;
     justify-content: center;
     overflow: auto;
-    width: 100%;
+    width: min(100%, 980px);
     padding: 16px;
     box-sizing: border-box;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    background-color: rgba(15, 23, 42, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
 }
 
 .algorithmLayout {
@@ -194,18 +293,35 @@
     justify-content: center;
     gap: 16px;
     width: 100%;
+    max-width: 1400px;
+    padding: 0 8px 12px;
+    box-sizing: border-box;
+}
+
+.mazeRow {
+    display: flex;
 }
 
 .dijkstraPanel {
     width: 320px;
     padding: 14px;
-    border: 2px solid #000;
-    border-radius: 8px;
-    background-color: #f5f5f5;
-    color: #000;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    background-color: rgba(241, 245, 249, 0.96);
+    color: #0f172a;
     text-align: left;
     font-size: 14px;
     line-height: 1.4;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dijkstraPanelHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 8px;
 }
 
 .dijkstraPanel h3,
@@ -215,18 +331,32 @@
 
 .dijkstraStatus {
     font-weight: bold;
-    margin-bottom: 8px;
+    background-color: #dbeafe;
+    border-radius: 999px;
+    padding: 4px 10px;
 }
 
 .dijkstraMetrics {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px 12px;
-    margin-bottom: 10px;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
 }
 
 .dijkstraLegend {
     margin-bottom: 10px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.dijkstraLegend h4 {
+    margin: 0 0 6px;
 }
 
 .dijkstraLegend > div {
@@ -268,10 +398,21 @@
     padding-left: 18px;
 }
 
-@media (max-width: 1100px) {
+.dijkstraHowItWorks {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+@media (max-width: 1280px) {
     .algorithmLayout {
         flex-direction: column;
         align-items: center;
+    }
+
+    .mazeContainer {
+        width: min(100%, 1100px);
     }
 
     .dijkstraPanel {
@@ -279,8 +420,37 @@
     }
 }
 
+@media (max-width: 900px) {
+    .mazeContainer {
+        --cell-size: 21px;
+        width: min(100%, 96vw);
+        padding: 12px;
+    }
+}
+
+@media (max-width: 700px) {
+    .mazeContainer {
+        --cell-size: 18px;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 520px) {
+    .mazeContainer {
+        --cell-size: 15px;
+        width: 98vw;
+        padding: 8px;
+    }
+
+    .start {
+        font-size: 0;
+    }
+}
+
 .maze {
     flex-grow: 1;
+    width: max-content;
+    margin: 0 auto;
 }
 
 .winBox {
@@ -291,9 +461,9 @@
     font-size: 20px;
     font-weight: bold;
     padding: 20px;
-    background-color: #fff;
-    border: 2px solid #000;
-    border-radius: 5px;
+    background-color: #f8fafc;
+    border: 2px solid #0f172a;
+    border-radius: 12px;
     text-align: center;
     position: fixed;
     top: 50%;
@@ -301,5 +471,5 @@
     transform: translate(-50%, -50%);
     z-index: 1001;
     width: 400px;
-    color: black;
+    color: #0f172a;
 }
