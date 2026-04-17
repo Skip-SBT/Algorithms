@@ -15,6 +15,7 @@ type DijkstraInfoPanelProps = {
     shortestFrontierCell: { row: number; col: number } | null;
     shortestFrontierDistance: number | null;
     playbackDelayMs: number;
+    calculationTimeMs: number | null;
 };
 
 export function DijkstraInfoPanel({
@@ -32,6 +33,7 @@ export function DijkstraInfoPanel({
     shortestFrontierCell,
     shortestFrontierDistance,
     playbackDelayMs,
+    calculationTimeMs,
 }: DijkstraInfoPanelProps): React.ReactElement {
     const statusText = isPaused
         ? 'Paused'
@@ -59,6 +61,7 @@ export function DijkstraInfoPanel({
                 <div>Distance: {currentDistance ?? '-'}</div>
                 <div>Shortest Frontier: {shortestFrontierCell ? `(${shortestFrontierCell.row}, ${shortestFrontierCell.col})` : '-'}</div>
                 <div>Frontier Dist: {shortestFrontierDistance ?? '-'}</div>
+                <div>Calc Time: {calculationTimeMs === null ? '-' : `${calculationTimeMs.toFixed(3)}ms`}</div>
                 <div>Step Delay: {playbackDelayMs}ms</div>
             </div>
 

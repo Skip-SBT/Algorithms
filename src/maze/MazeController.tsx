@@ -53,6 +53,7 @@ export function MazeController(): React.ReactElement {
 
     const [hasWon, setHasWon] = useState<boolean>(false);
     const [timer, setTimer] = useState<number>(0);
+    const [dijkstraComputeMs, setDijkstraComputeMs] = useState<number | null>(null);
     const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
     const [moveCount, setMoveCount] = useState<number>(0);
     const [start, setStart] = useState<boolean>(false);
@@ -102,12 +103,13 @@ export function MazeController(): React.ReactElement {
         setShortestFrontierDistance(null);
         setDijkstraStepIndex(0);
         setDijkstraTotalSteps(0);
+        setDijkstraComputeMs(null);
     };
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
 
-        if (isTimerRunning) {
+        if (isTimerRunning && isUserInputMode) {
             interval = setInterval(() => {
                 setTimer(prevTimer => prevTimer + 0.1);
             }, 100);
@@ -118,7 +120,7 @@ export function MazeController(): React.ReactElement {
                 clearInterval(interval);
             }
         };
-    }, [isTimerRunning]);
+    }, [isTimerRunning, isUserInputMode]);
 
     useEffect(() => {
         clearAnimationTimeouts();
@@ -186,9 +188,14 @@ export function MazeController(): React.ReactElement {
         setHasWon(false);
         setMoveCount(0);
         setTimer(0);
+        setDijkstraComputeMs(null);
         setIsPaused(false);
 
+        const startedAt = performance.now();
         const nextResult = dijkstraController.dijkstra();
+        const endedAt = performance.now();
+        setDijkstraComputeMs(endedAt - startedAt);
+        setTimer((endedAt - startedAt) / 1000);
         setDijkstraResult(nextResult);
         setDijkstraTotalSteps(nextResult.steps.length);
         setDijkstraPhase('search');
@@ -341,12 +348,23 @@ export function MazeController(): React.ReactElement {
     }
 
     const selectedMazeLabel = mazeOptions.find(option => option.value === selectedMaze)?.label ?? mazeOptions[0].label;
+    const dijkstraIsRunning = start && !isPaused && (dijkstraPhase === 'search' || dijkstraPhase === 'path');
+    const timerLabel = isUserInputMode
+        ? `${timer.toFixed(2)} Seconds`
+        : dijkstraComputeMs === null
+            ? '- ms'
+            : `${dijkstraComputeMs.toFixed(3)} ms`;
+    const completionLabel = isUserInputMode
+        ? `${timer.toFixed(2)} Seconds`
+        : dijkstraComputeMs === null
+            ? '- ms'
+            : `${dijkstraComputeMs.toFixed(3)} ms`;
 
     return (
         <>
             <div className='toolbar toolbarCard'>
                 <div className='toolbarGroup statsGroup'>
-                    <div className='timer'>{timer.toFixed(2)} Seconds</div>
+                    <div className='timer'>{timerLabel}</div>
                     <div className='moveCount'>{moveCount} Moves</div>
                 </div>
 
@@ -388,7 +406,7 @@ export function MazeController(): React.ReactElement {
                 </div>
                 {!isUserInputMode && (
                     <DijkstraInfoPanel
-                        isRunning={isTimerRunning && start}
+                        isRunning={dijkstraIsRunning}
                         isPaused={isPaused}
                         hasStarted={dijkstraStepIndex > 0}
                         hasWon={hasWon}
@@ -402,6 +420,7 @@ export function MazeController(): React.ReactElement {
                         shortestFrontierCell={shortestFrontierCell}
                         shortestFrontierDistance={shortestFrontierDistance}
                         playbackDelayMs={animationDelayMs}
+                        calculationTimeMs={dijkstraComputeMs}
                     />
                 )}
             </div>
@@ -410,7 +429,7 @@ export function MazeController(): React.ReactElement {
                     <div>Congratulations! You have won!</div>
                     <br />
                     <div>
-                        Time needed for completion: {timer.toFixed(2)} Seconds
+                        Time needed for completion: {completionLabel}
                     </div>
                     <br />
                     <div>Number of moves: {moveCount}</div>
