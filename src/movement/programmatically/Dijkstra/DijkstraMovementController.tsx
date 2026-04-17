@@ -12,6 +12,80 @@ export type DijkstraStep = {
     shortestFrontierDistance: number | null;
 };
 
+type QueueNode = [number, number, number];
+
+class MinPriorityQueue {
+    private heap: QueueNode[] = [];
+
+    public get size(): number {
+        return this.heap.length;
+    }
+
+    public push(node: QueueNode): void {
+        this.heap.push(node);
+        this.bubbleUp(this.heap.length - 1);
+    }
+
+    public pop(): QueueNode | undefined {
+        if (this.heap.length === 0) {
+            return undefined;
+        }
+
+        const top = this.heap[0];
+        const last = this.heap.pop()!;
+
+        if (this.heap.length > 0) {
+            this.heap[0] = last;
+            this.bubbleDown(0);
+        }
+
+        return top;
+    }
+
+    public peek(): QueueNode | undefined {
+        return this.heap[0];
+    }
+
+    private bubbleUp(index: number): void {
+        let current = index;
+
+        while (current > 0) {
+            const parent = Math.floor((current - 1) / 2);
+            if (this.heap[parent][2] <= this.heap[current][2]) {
+                break;
+            }
+
+            [this.heap[parent], this.heap[current]] = [this.heap[current], this.heap[parent]];
+            current = parent;
+        }
+    }
+
+    private bubbleDown(index: number): void {
+        let current = index;
+
+        while (true) {
+            const left = (current * 2) + 1;
+            const right = left + 1;
+            let smallest = current;
+
+            if (left < this.heap.length && this.heap[left][2] < this.heap[smallest][2]) {
+                smallest = left;
+            }
+
+            if (right < this.heap.length && this.heap[right][2] < this.heap[smallest][2]) {
+                smallest = right;
+            }
+
+            if (smallest === current) {
+                break;
+            }
+
+            [this.heap[current], this.heap[smallest]] = [this.heap[smallest], this.heap[current]];
+            current = smallest;
+        }
+    }
+}
+
 export class DijkstraMovementController {
     private maze: CellNode[][];
 
@@ -19,34 +93,29 @@ export class DijkstraMovementController {
         this.maze = maze;
     }
 
-    private toCellKey(row: number, col: number): string {
-        return `${row}:${col}`;
+    private toCellId(row: number, col: number, cols: number): number {
+        return (row * cols) + col;
     }
 
-    private fromCellKey(key: string): [number, number] {
-        const [row, col] = key.split(':').map(value => Number(value));
-        return [row, col];
+    private fromCellId(id: number, cols: number): [number, number] {
+        return [Math.floor(id / cols), id % cols];
     }
 
-    private getShortestFrontier(
-        pq: [number, number, number][],
-        distances: number[][]
-    ): { cell: [number, number] | null; distance: number | null } {
-        let shortestCell: [number, number] | null = null;
-        let shortestDistance: number | null = null;
+    private discardStaleTop(queue: MinPriorityQueue, distances: number[][]): void {
+        while (queue.size > 0) {
+            const top = queue.peek();
 
-        pq.forEach(([row, col, distance]) => {
-            if (distance !== distances[row][col]) {
+            if (!top) {
                 return;
             }
 
-            if (shortestDistance === null || distance < shortestDistance) {
-                shortestDistance = distance;
-                shortestCell = [row, col];
+            const [row, col, dist] = top;
+            if (dist === distances[row][col]) {
+                return;
             }
-        });
 
-        return { cell: shortestCell, distance: shortestDistance };
+            queue.pop();
+        }
     }
 
     private getNeighbors(x: number, y: number): [number, number][] {
@@ -76,11 +145,12 @@ export class DijkstraMovementController {
         const cols = this.maze[0].length;
         const distances: number[][] = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
         const previous: ([number, number] | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null));
-        const pq: [number, number, number][] = [];
+        const pq = new MinPriorityQueue();
         const visitedOrder: [number, number][] = [];
         const steps: DijkstraStep[] = [];
-        const frontierKeys = new Set<string>();
-        const visitedKeys = new Set<string>();
+        const visited: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+        const inFrontier: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+        const frontierIds = new Set<number>();
 
         let startX = -1, startY = -1, finishX = -1, finishY = -1;
         for (let i = 0; i < rows; i++) {
@@ -101,22 +171,33 @@ export class DijkstraMovementController {
 
         distances[startX][startY] = 0;
         pq.push([startX, startY, 0]);
-        frontierKeys.add(this.toCellKey(startX, startY));
+        const startId = this.toCellId(startX, startY, cols);
+        inFrontier[startX][startY] = true;
+        frontierIds.add(startId);
 
-        while (pq.length > 0) {
-            pq.sort((a, b) => a[2] - b[2]);
-            const [x, y, dist] = pq.shift()!;
+        while (pq.size > 0) {
+            const currentNode = pq.pop();
+            if (!currentNode) {
+                break;
+            }
+
+            const [x, y, dist] = currentNode;
 
             if (dist !== distances[x][y]) {
                 continue;
             }
 
-            const currentKey = this.toCellKey(x, y);
-            frontierKeys.delete(currentKey);
-            visitedKeys.add(currentKey);
+            const currentId = this.toCellId(x, y, cols);
+            inFrontier[x][y] = false;
+            frontierIds.delete(currentId);
+            visited[x][y] = true;
             visitedOrder.push([x, y]);
 
             this.getNeighbors(x, y).forEach(([nx, ny]) => {
+                if (visited[nx][ny]) {
+                    return;
+                }
+
                 const newDist = dist + 1;
                 if (newDist < distances[nx][ny]) {
                     distances[nx][ny] = newDist;
@@ -124,20 +205,22 @@ export class DijkstraMovementController {
                     pq.push([nx, ny, newDist]);
                 }
 
-                const neighborKey = this.toCellKey(nx, ny);
-                if (!visitedKeys.has(neighborKey) && distances[nx][ny] !== Infinity) {
-                    frontierKeys.add(neighborKey);
+                if (distances[nx][ny] !== Infinity && !inFrontier[nx][ny]) {
+                    const neighborId = this.toCellId(nx, ny, cols);
+                    inFrontier[nx][ny] = true;
+                    frontierIds.add(neighborId);
                 }
             });
 
-            const shortestFrontier = this.getShortestFrontier(pq, distances);
+            this.discardStaleTop(pq, distances);
+            const shortestFrontier = pq.peek();
 
             steps.push({
                 current: [x, y],
                 distance: dist,
-                frontier: [...frontierKeys].map(key => this.fromCellKey(key)),
-                shortestFrontier: shortestFrontier.cell,
-                shortestFrontierDistance: shortestFrontier.distance,
+                frontier: [...frontierIds].map(id => this.fromCellId(id, cols)),
+                shortestFrontier: shortestFrontier ? [shortestFrontier[0], shortestFrontier[1]] : null,
+                shortestFrontierDistance: shortestFrontier ? shortestFrontier[2] : null,
             });
 
             if (x === finishX && y === finishY) {
