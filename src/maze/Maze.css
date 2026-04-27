@@ -31,7 +31,7 @@
 }
 
 .wall {
-    background-color: #11d537;
+    background-color: #1a2744;
     width: var(--cell-size);
     height: var(--cell-size);
     box-sizing: border-box;
@@ -110,6 +110,28 @@
     background-position: 0 0, calc(var(--cell-size) * 0.2) calc(var(--cell-size) * 0.2);
     box-sizing: border-box;
 }
+
+.pageHeader {
+    width: min(100%, 1200px);
+    padding: 0 12px 2px;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.pageTitle {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.3px;
+}
+
+.selectorLabel {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
 
 .toolbar {
     display: flex;

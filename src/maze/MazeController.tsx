@@ -47,7 +47,7 @@ export function MazeController(): React.ReactElement {
     const initialPosition: Position = useMemo(() => findStartPosition(map), [map]);
     const [playerPosition, setPlayerPosition] = useState<Position>(initialPosition);
 
-    const [isUserInputMode, setIsUserInputMode] = useState<boolean>(true);
+    const [isUserInputMode, setIsUserInputMode] = useState<boolean>(false);
     const playerController = useMemo(() => new PlayerController(map, initialPosition), [map, initialPosition]);
     const dijkstraController = useMemo(() => new DijkstraMovementController(map), [map]);
 
@@ -362,6 +362,9 @@ export function MazeController(): React.ReactElement {
 
     return (
         <>
+            <div className='pageHeader'>
+                <h1 className='pageTitle'>Algorithm Visualizer</h1>
+            </div>
             <div className='toolbar toolbarCard'>
                 <div className='toolbarGroup statsGroup'>
                     <div className='timer'>{timerLabel}</div>
@@ -369,7 +372,8 @@ export function MazeController(): React.ReactElement {
                 </div>
 
                 <div className='toolbarGroup controlsGroup'>
-                    <select className='mazeSelector' onChange={handleMazeChange} value={selectedMazeLabel}>
+                    <label className='selectorLabel' htmlFor='gridSelector'>Grid:</label>
+                    <select id='gridSelector' className='mazeSelector' onChange={handleMazeChange} value={selectedMazeLabel}>
                         {mazeOptions.map(option => (
                             <option key={option.label} value={option.label}>{option.label}</option>
                         ))}
@@ -378,7 +382,7 @@ export function MazeController(): React.ReactElement {
                         <button className='resetButton-fixed' onClick={resetGameHandler}>Reset</button>
                     )}
                     <button className='modeButton' onClick={switchMode}>
-                        {isUserInputMode ? 'Switch to Dijkstra' : 'Switch to User Input'}
+                        {isUserInputMode ? 'Dijkstra Mode' : 'Manual Mode'}
                     </button>
                     <button className='startButton' onClick={toggleStart}>
                         {start ? 'Stop' : 'Start'}
@@ -396,7 +400,7 @@ export function MazeController(): React.ReactElement {
                 </div>
 
                 <div className='toolbarGroup modeGroup'>
-                    <div className='modeLabel'>Mode: {isUserInputMode ? 'User Input' : 'Dijkstra Visualizer'}</div>
+                    <div className='modeLabel'>Mode: {isUserInputMode ? 'Manual' : 'Dijkstra'}</div>
                     {!isUserInputMode && <div className='speedLabel'>Delay: {animationDelayMs}ms</div>}
                 </div>
             </div>

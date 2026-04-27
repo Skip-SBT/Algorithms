@@ -48,7 +48,7 @@ export function DijkstraInfoPanel({
     return (
         <aside className='dijkstraPanel'>
             <div className='dijkstraPanelHeader'>
-                <h3>Dijkstra Visualizer</h3>
+                <h3>Dijkstra's Algorithm</h3>
                 <div className='dijkstraStatus'>Status: {statusText}</div>
             </div>
 
