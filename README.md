@@ -10,7 +10,7 @@ An interactive algorithm visualizer built with React and TypeScript. The primary
 - **Live metrics panel** — tracks step index, explored-node count, frontier size, path length, current node distance, and calculation time
 - **Playback controls** — start, pause/resume, slow down, and reset at any point during the animation
 - **Color-coded visualization**
-  - 🟣 Explored nodes (shortest distance finalised)
+  - 🟣 Explored nodes (shortest distance finalized)
   - 🔵 Frontier nodes (discovered, awaiting processing)
   - 🩵 Shortest-frontier candidate (next node to be processed)
   - 🟡 Final shortest path
