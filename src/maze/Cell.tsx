@@ -4,6 +4,6 @@ type CellProps = {
     className?: string;
 };
 
-export function Cell({ className = '' }: CellProps): React.ReactElement {
+export const Cell = React.memo(function Cell({ className = '' }: CellProps): React.ReactElement {
     return <div className={`cell ${className}`.trim()}></div>;
-}
+});

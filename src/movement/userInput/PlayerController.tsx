@@ -3,6 +3,8 @@ type Position = {
     col: number;
 };
 
+export type Direction = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
+
 export class PlayerController {
     private readonly map: string[][];
     private position: Position;
@@ -16,11 +18,11 @@ export class PlayerController {
         return this.position;
     }
 
-    public handleKeyDown(event: KeyboardEvent): Position {
+    public move(direction: Direction): Position {
         let newRow = this.position.row;
         let newCol = this.position.col;
 
-        switch (event.key) {
+        switch (direction) {
         case 'ArrowUp':
             newRow = Math.max(0, this.position.row - 1);
             break;

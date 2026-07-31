@@ -5,6 +5,7 @@ type DijkstraInfoPanelProps = {
     isPaused: boolean;
     hasStarted: boolean;
     hasWon: boolean;
+    noPathFound: boolean;
     stepIndex: number;
     totalSteps: number;
     exploredCount: number;
@@ -23,6 +24,7 @@ export function DijkstraInfoPanel({
     isPaused,
     hasStarted,
     hasWon,
+    noPathFound,
     stepIndex,
     totalSteps,
     exploredCount,
@@ -41,16 +43,30 @@ export function DijkstraInfoPanel({
             ? 'Running'
             : hasWon
                 ? 'Completed'
-                : hasStarted
-                    ? 'Stopped'
-                    : 'Ready';
+                : noPathFound
+                    ? 'No path found'
+                    : hasStarted
+                        ? 'Stopped'
+                        : 'Ready';
 
     return (
         <aside className='dijkstraPanel'>
             <div className='dijkstraPanelHeader'>
                 <h3>Dijkstra Visualizer</h3>
-                <div className='dijkstraStatus'>Status: {statusText}</div>
+                <div
+                    className={`dijkstraStatus${noPathFound ? ' dijkstraStatusWarning' : ''}`}
+                    role='status'
+                    aria-live='polite'
+                >
+                    Status: {statusText}
+                </div>
             </div>
+
+            {noPathFound && (
+                <p className='dijkstraNoPathMessage'>
+                    No route exists between start and finish in this maze. Pick a different maze or reset and try again.
+                </p>
+            )}
 
             <div className='dijkstraMetrics'>
                 <div>Step: {stepIndex}/{totalSteps}</div>

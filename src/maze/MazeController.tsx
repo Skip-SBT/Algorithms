@@ -1,26 +1,33 @@
 import * as React from 'react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { Wall } from './Wall';
 import { Cell } from './Cell';
 import { Finish } from './Finish';
 import { Start } from './Start';
 import { Player } from './Player';
 import { DijkstraInfoPanel } from './DijkstraInfoPanel';
-import { PlayerController } from 'movement/userInput/PlayerController';
+import { PlayerController, Direction } from 'movement/userInput/PlayerController';
 import './Maze.css';
 import { DijkstraMovementController, DijkstraResult } from '../movement/programmatically/Dijkstra/DijkstraMovementController';
 import '../types';
-import mazeList from './maps/mazeList.json';
+import mazeListJson from './maps/mazeList.json';
 
 type Position = {
     row: number;
     col: number;
 };
 
+type MazeListJson = Record<'maze1' | 'maze2' | 'maze3' | 'maze4' | 'maze5', CellNode[][]>;
+const mazeList = mazeListJson as unknown as MazeListJson;
+
 type DijkstraPhase = 'idle' | 'search' | 'path' | 'done';
 
 const DEFAULT_DELAY_MS = 40;
+const MIN_DELAY_MS = 10;
 const MAX_DELAY_MS = 180;
+const MIN_CELL_SIZE = 8;
+const MAX_CELL_SIZE = 28;
+const MAX_SEARCH_TICKS = 150;
 const positionToKey = ({ row, col }: Position): string => `${row}-${col}`;
 
 type MazeOption = {
@@ -30,20 +37,17 @@ type MazeOption = {
 
 export function MazeController(): React.ReactElement {
     const mazeOptions: MazeOption[] = [
-        // @ts-ignore
         { label: 'LARGE', value: mazeList.maze1 },
-        // @ts-ignore
         { label: '10x10', value: mazeList.maze2 },
-        // @ts-ignore
         { label: '15x15', value: mazeList.maze3 },
-        // @ts-ignore
         { label: '20x20', value: mazeList.maze4 },
-        // @ts-ignore
         { label: '40x40', value: mazeList.maze5 },
     ];
 
     const [selectedMaze, setSelectedMaze] = useState(mazeOptions[0].value);
     const map: CellNode[][] = selectedMaze;
+    const mazeContainerRef = useRef<HTMLDivElement>(null);
+    const [cellSize, setCellSize] = useState<number>(MAX_CELL_SIZE);
     const initialPosition: Position = useMemo(() => findStartPosition(map), [map]);
     const [playerPosition, setPlayerPosition] = useState<Position>(initialPosition);
 
@@ -52,6 +56,7 @@ export function MazeController(): React.ReactElement {
     const dijkstraController = useMemo(() => new DijkstraMovementController(map), [map]);
 
     const [hasWon, setHasWon] = useState<boolean>(false);
+    const [noPathFound, setNoPathFound] = useState<boolean>(false);
     const [timer, setTimer] = useState<number>(0);
     const [dijkstraComputeMs, setDijkstraComputeMs] = useState<number | null>(null);
     const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
@@ -77,10 +82,44 @@ export function MazeController(): React.ReactElement {
     const [pathIndex, setPathIndex] = useState<number>(0);
 
     const animationTimeouts = useRef<number[]>([]);
+    const stepsPerTickRef = useRef<number>(1);
     const exploredCellKeys = useMemo(() => new Set(exploredCells.map(positionToKey)), [exploredCells]);
     const frontierCellKeys = useMemo(() => new Set(frontierCells.map(positionToKey)), [frontierCells]);
     const shortestFrontierKey = useMemo(() => (shortestFrontierCell ? positionToKey(shortestFrontierCell) : null), [shortestFrontierCell]);
     const pathCellKeys = useMemo(() => new Set(pathCells.map(positionToKey)), [pathCells]);
+
+    useLayoutEffect(() => {
+        const container = mazeContainerRef.current;
+        if (!container) {
+            return;
+        }
+
+        const columns = map[0]?.length ?? 1;
+        const rows = map.length;
+
+        const recomputeCellSize = () => {
+            const style = window.getComputedStyle(container);
+            const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+            const availableWidth = container.clientWidth - horizontalPadding;
+            const availableHeight = container.clientHeight - verticalPadding;
+
+            const widthBasedSize = Math.floor(availableWidth / columns);
+            const heightBasedSize = Math.floor(availableHeight / rows);
+            const nextSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, widthBasedSize, heightBasedSize));
+
+            setCellSize(prevSize => (prevSize === nextSize ? prevSize : nextSize));
+        };
+
+        recomputeCellSize();
+
+        const resizeObserver = new ResizeObserver(recomputeCellSize);
+        resizeObserver.observe(container);
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [map]);
 
     const clearAnimationTimeouts = () => {
         animationTimeouts.current.forEach(timeout => window.clearTimeout(timeout));
@@ -90,6 +129,7 @@ export function MazeController(): React.ReactElement {
     const resetDijkstraPlaybackState = () => {
         setDijkstraResult(null);
         setDijkstraPhase('idle');
+        setNoPathFound(false);
         setSearchIndex(0);
         setPathIndex(0);
         setIsPaused(false);
@@ -140,6 +180,31 @@ export function MazeController(): React.ReactElement {
         setIsTimerRunning(shouldRunTimer);
     }, [dijkstraPhase, isPaused, isUserInputMode, start]);
 
+    const handleMove = useCallback((direction: Direction) => {
+        if (!start) {
+            return;
+        }
+
+        if (!isTimerRunning) {
+            setIsTimerRunning(true);
+        }
+
+        const previousPosition = playerController.getPosition();
+        const newPosition = playerController.move(direction);
+        const hasMoved = previousPosition.row !== newPosition.row || previousPosition.col !== newPosition.col;
+
+        setPlayerPosition(newPosition);
+
+        if (hasMoved) {
+            setMoveCount(prevCount => prevCount + 1);
+        }
+
+        if (playerController.hasWon()) {
+            setHasWon(true);
+            setIsTimerRunning(false);
+        }
+    }, [isTimerRunning, playerController, start]);
+
     useEffect(() => {
         if (!start || !isUserInputMode) {
             return;
@@ -151,25 +216,7 @@ export function MazeController(): React.ReactElement {
             }
 
             event.preventDefault();
-
-            if (!isTimerRunning) {
-                setIsTimerRunning(true);
-            }
-
-            const previousPosition = playerController.getPosition();
-            const newPosition = playerController.handleKeyDown(event);
-            const hasMoved = previousPosition.row !== newPosition.row || previousPosition.col !== newPosition.col;
-
-            setPlayerPosition(newPosition);
-
-            if (hasMoved) {
-                setMoveCount(prevCount => prevCount + 1);
-            }
-
-            if (playerController.hasWon()) {
-                setHasWon(true);
-                setIsTimerRunning(false);
-            }
+            handleMove(event.key as Direction);
         };
 
         window.addEventListener('keydown', handleKeyDown);
@@ -177,7 +224,7 @@ export function MazeController(): React.ReactElement {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [isTimerRunning, isUserInputMode, playerController, start]);
+    }, [handleMove, isUserInputMode, start]);
 
     useEffect(() => {
         if (!start || isUserInputMode) {
@@ -186,6 +233,7 @@ export function MazeController(): React.ReactElement {
 
         clearAnimationTimeouts();
         setHasWon(false);
+        setNoPathFound(false);
         setMoveCount(0);
         setTimer(0);
         setDijkstraComputeMs(null);
@@ -194,6 +242,7 @@ export function MazeController(): React.ReactElement {
         const startedAt = performance.now();
         const nextResult = dijkstraController.dijkstra();
         const endedAt = performance.now();
+        stepsPerTickRef.current = Math.max(1, Math.ceil(nextResult.steps.length / MAX_SEARCH_TICKS));
         setDijkstraComputeMs(endedAt - startedAt);
         setTimer((endedAt - startedAt) / 1000);
         setDijkstraResult(nextResult);
@@ -222,6 +271,7 @@ export function MazeController(): React.ReactElement {
                     setDijkstraPhase('done');
                     setStart(false);
                     setIsTimerRunning(false);
+                    setNoPathFound(true);
                     setShortestFrontierCell(null);
                     setShortestFrontierDistance(null);
                 } else {
@@ -235,7 +285,8 @@ export function MazeController(): React.ReactElement {
             }
 
             const timeout = window.setTimeout(() => {
-                const step = dijkstraResult.steps[searchIndex];
+                const batchEnd = Math.min(searchIndex + stepsPerTickRef.current, dijkstraResult.steps.length);
+                const step = dijkstraResult.steps[batchEnd - 1];
                 const [row, col] = step.current;
                 const currentPosition = { row, col };
                 const nextShortestFrontier = step.shortestFrontier
@@ -247,14 +298,14 @@ export function MazeController(): React.ReactElement {
                 setCurrentDijkstraDistance(step.distance);
                 setShortestFrontierCell(nextShortestFrontier);
                 setShortestFrontierDistance(step.shortestFrontierDistance);
-                setDijkstraStepIndex(searchIndex + 1);
+                setDijkstraStepIndex(batchEnd);
                 setExploredCells(
                     dijkstraResult.visitedOrder
-                        .slice(0, searchIndex + 1)
+                        .slice(0, batchEnd)
                         .map(([visitedRow, visitedCol]) => ({ row: visitedRow, col: visitedCol }))
                 );
                 setFrontierCells(step.frontier.map(([frontierRow, frontierCol]) => ({ row: frontierRow, col: frontierCol })));
-                setSearchIndex(prevSearchIndex => prevSearchIndex + 1);
+                setSearchIndex(batchEnd);
             }, animationDelayMs);
 
             animationTimeouts.current.push(timeout);
@@ -332,6 +383,10 @@ export function MazeController(): React.ReactElement {
         setAnimationDelayMs(prevDelay => Math.min(MAX_DELAY_MS, prevDelay + 20));
     };
 
+    const speedUpDijkstra = () => {
+        setAnimationDelayMs(prevDelay => Math.max(MIN_DELAY_MS, prevDelay - 20));
+    };
+
     function switchMode(): void {
         setIsUserInputMode(prevMode => !prevMode);
         resetGameHandler();
@@ -346,6 +401,17 @@ export function MazeController(): React.ReactElement {
         setSelectedMaze(nextMaze);
         setStart(false);
     }
+
+    const mazeAriaLabel = isUserInputMode
+        ? `Maze grid. Player at row ${playerPosition.row + 1}, column ${playerPosition.col + 1}. Use the arrow keys to reach the finish.`
+        : `Maze grid showing Dijkstra's algorithm progress. Status: ${dijkstraPhase}. ${exploredCells.length} cells explored, ${frontierCells.length} in the frontier, path length ${pathCells.length > 0 ? pathCells.length - 1 : 0}.`;
+
+    const isSearching = !isUserInputMode && dijkstraPhase === 'search';
+
+    const mazeElement = useMemo(
+        () => renderMaze(map, playerPosition, exploredCellKeys, frontierCellKeys, shortestFrontierKey, pathCellKeys, mazeAriaLabel, isSearching),
+        [map, playerPosition, exploredCellKeys, frontierCellKeys, shortestFrontierKey, pathCellKeys, mazeAriaLabel, isSearching]
+    );
 
     const selectedMazeLabel = mazeOptions.find(option => option.value === selectedMaze)?.label ?? mazeOptions[0].label;
     const dijkstraIsRunning = start && !isPaused && (dijkstraPhase === 'search' || dijkstraPhase === 'path');
@@ -369,7 +435,12 @@ export function MazeController(): React.ReactElement {
                 </div>
 
                 <div className='toolbarGroup controlsGroup'>
-                    <select className='mazeSelector' onChange={handleMazeChange} value={selectedMazeLabel}>
+                    <select
+                        className='mazeSelector'
+                        onChange={handleMazeChange}
+                        value={selectedMazeLabel}
+                        aria-label='Select maze size'
+                    >
                         {mazeOptions.map(option => (
                             <option key={option.label} value={option.label}>{option.label}</option>
                         ))}
@@ -388,8 +459,19 @@ export function MazeController(): React.ReactElement {
                             <button className='pauseButton' onClick={togglePause} disabled={!start}>
                                 {isPaused ? 'Resume' : 'Pause'}
                             </button>
-                            <button className='slowDownButton' onClick={slowDownDijkstra}>
+                            <button
+                                className='slowDownButton'
+                                onClick={slowDownDijkstra}
+                                disabled={animationDelayMs >= MAX_DELAY_MS}
+                            >
                                 Slow Down
+                            </button>
+                            <button
+                                className='speedUpButton'
+                                onClick={speedUpDijkstra}
+                                disabled={animationDelayMs <= MIN_DELAY_MS}
+                            >
+                                Speed Up
                             </button>
                         </>
                     )}
@@ -400,9 +482,52 @@ export function MazeController(): React.ReactElement {
                     {!isUserInputMode && <div className='speedLabel'>Delay: {animationDelayMs}ms</div>}
                 </div>
             </div>
+            {isUserInputMode && !hasWon && (
+                <>
+                    <p className='keyboardHint'>Use the arrow keys to move to the finish.</p>
+                    <div className='touchControls' role='group' aria-label='Move player'>
+                        <button
+                            type='button'
+                            className='touchControlButton touchControlUp'
+                            aria-label='Move up'
+                            onClick={() => handleMove('ArrowUp')}
+                        >
+                            &#9650;
+                        </button>
+                        <button
+                            type='button'
+                            className='touchControlButton touchControlLeft'
+                            aria-label='Move left'
+                            onClick={() => handleMove('ArrowLeft')}
+                        >
+                            &#9664;
+                        </button>
+                        <button
+                            type='button'
+                            className='touchControlButton touchControlRight'
+                            aria-label='Move right'
+                            onClick={() => handleMove('ArrowRight')}
+                        >
+                            &#9654;
+                        </button>
+                        <button
+                            type='button'
+                            className='touchControlButton touchControlDown'
+                            aria-label='Move down'
+                            onClick={() => handleMove('ArrowDown')}
+                        >
+                            &#9660;
+                        </button>
+                    </div>
+                </>
+            )}
             <div className='algorithmLayout'>
-                <div className='mazeContainer'>
-                    {renderMaze(map, playerPosition, exploredCellKeys, frontierCellKeys, shortestFrontierKey, pathCellKeys)}
+                <div
+                    className='mazeContainer'
+                    ref={mazeContainerRef}
+                    style={{ '--cell-size': `${cellSize}px` } as unknown as React.CSSProperties}
+                >
+                    {mazeElement}
                 </div>
                 {!isUserInputMode && (
                     <DijkstraInfoPanel
@@ -410,6 +535,7 @@ export function MazeController(): React.ReactElement {
                         isPaused={isPaused}
                         hasStarted={dijkstraStepIndex > 0}
                         hasWon={hasWon}
+                        noPathFound={noPathFound}
                         stepIndex={dijkstraStepIndex}
                         totalSteps={dijkstraTotalSteps}
                         exploredCount={exploredCells.length}
@@ -425,7 +551,7 @@ export function MazeController(): React.ReactElement {
                 )}
             </div>
             {hasWon && (
-                <div className='winMessage'>
+                <div className='winMessage' role='alert'>
                     <div>Congratulations! You have won!</div>
                     <br />
                     <div>
@@ -447,7 +573,9 @@ function renderMaze(
     exploredCellKeys: Set<string>,
     frontierCellKeys: Set<string>,
     shortestFrontierKey: string | null,
-    pathCellKeys: Set<string>
+    pathCellKeys: Set<string>,
+    ariaLabel: string,
+    isSearching: boolean
 ): React.ReactElement {
     const maze = map.map((row, rowIndex) => (
         <div key={rowIndex} className='mazeRow'>
@@ -455,7 +583,7 @@ function renderMaze(
                 const cellKey = `${rowIndex}-${cellIndex}`;
 
                 if (playerPosition.row === rowIndex && playerPosition.col === cellIndex) {
-                    return <Player key={`${rowIndex}-${cellIndex}`} />;
+                    return <Player key={`${rowIndex}-${cellIndex}`} className={isSearching ? 'searching' : ''} />;
                 }
 
                 const cellStateClassName = pathCellKeys.has(cellKey)
@@ -482,7 +610,7 @@ function renderMaze(
         </div>
     ));
 
-    return <div className='maze'>{maze}</div>;
+    return <div className='maze' role='img' aria-label={ariaLabel}>{maze}</div>;
 }
 
 function resetGame(
