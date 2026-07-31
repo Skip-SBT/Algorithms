@@ -5,9 +5,9 @@
 .App-header {
   background-color: #020617;
   background-image:
-    radial-gradient(ellipse 900px 460px at 50% 0%, rgba(56, 189, 248, 0.08), transparent 70%),
-    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.07) 0px, rgba(56, 189, 248, 0.07) 1px, transparent 1px, transparent 24px),
-    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.07) 0px, rgba(56, 189, 248, 0.07) 1px, transparent 1px, transparent 24px),
+    radial-gradient(ellipse 900px 460px at 50% 0%, rgba(var(--accent-cyan-rgb), 0.08), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(var(--accent-cyan-rgb), 0.07) 0px, rgba(var(--accent-cyan-rgb), 0.07) 1px, transparent 1px, transparent 24px),
+    repeating-linear-gradient(90deg, rgba(var(--accent-cyan-rgb), 0.07) 0px, rgba(var(--accent-cyan-rgb), 0.07) 1px, transparent 1px, transparent 24px),
     radial-gradient(circle at top, #1e293b 0%, #0f172a 55%, #020617 100%);
   min-height: 100vh;
   display: flex;
