@@ -4,6 +4,6 @@ type PlayerProps = {
     className?: string;
 };
 
-export function Player({ className = '' }: PlayerProps): React.ReactElement {
+export const Player = React.memo(function Player({ className = '' }: PlayerProps): React.ReactElement {
     return <div className={`player ${className}`.trim()}></div>;
-}
+});

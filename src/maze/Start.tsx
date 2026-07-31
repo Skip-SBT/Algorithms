@@ -4,6 +4,6 @@ type StartProps = {
     className?: string;
 };
 
-export function Start({ className = '' }: StartProps): React.ReactElement {
-    return <div className={`start ${className}`.trim()}>START</div>;
-}
+export const Start = React.memo(function Start({ className = '' }: StartProps): React.ReactElement {
+    return <div className={`start ${className}`.trim()} aria-label='Start'>S</div>;
+});
