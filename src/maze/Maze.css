@@ -25,6 +25,9 @@
     --border-dark: #334155;
     --text-main: #e2e8f0;
     --text-muted: #94a3b8;
+    --text-muted-rgb: 148, 163, 184;
+    --accent-cyan: #38bdf8;
+    --accent-cyan-rgb: 56, 189, 248;
 
     --state-explored: #6a4c93;
     --state-frontier: #1f9dff;
@@ -44,7 +47,7 @@
     box-sizing: border-box;
     background-color: var(--surface-1);
     box-shadow:
-        inset 1px 1px 2px rgba(148, 163, 184, 0.18),
+        inset 1px 1px 2px rgba(var(--text-muted-rgb), 0.18),
         inset -1px -1px 3px rgba(0, 0, 0, 0.65);
 }
 
@@ -161,7 +164,7 @@
 }
 
 .touchControlButton:focus-visible {
-    outline: 3px solid #38bdf8;
+    outline: 3px solid var(--accent-cyan);
     outline-offset: 2px;
 }
 
@@ -333,7 +336,7 @@
 .resetButton-fixed:focus-visible,
 .resetButton:focus-visible,
 .mazeSelector:focus-visible {
-    outline: 3px solid #38bdf8;
+    outline: 3px solid var(--accent-cyan);
     outline-offset: 2px;
 }
 
